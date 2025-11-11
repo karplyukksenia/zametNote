@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Заметки</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1, h2 {
+            text-align: center;
+        }
+
+        textarea {
+            width: 100%;
+            height: 100px;
+            margin-bottom: 10px;
+        }
+
+        input {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        .note {
+            background: #e9ecef;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+
+        .tag-group {
+            margin-top: 20px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        svg {
+            border: 1px solid #ccc;
+            margin-top: 20px;
+        }
+    </style>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Мои Заметки</h1>
+        <textarea id="noteInput" placeholder="Введите вашу заметку в Markdown..."></textarea>
+        <input type="text" id="tagsInput" placeholder="Введите теги (через запятую)" />
+        <button id="addNoteButton">Добавить Заметку</button>
+
+        <h2>Список Заметок</h2>
+        <div id="notesList"></div> <!-- Контейнер для списка заметок -->
+    </div>
+    <script>
+        let notes = [];
+
+        document.getElementById('addNoteButton').addEventListener('click', function() {
+            const noteInput = document.getElementById('noteInput');
+            const tagsInput = document.getElementById('tagsInput');
+            const noteText = noteInput.value.trim();
+            const tagsText = tagsInput.value.trim();
+
+            if (noteText) {
+                const note = {
+                    id: notes.length,
+                    text: noteText,
+                    tags: tagsText.split(',').map(tag => tag.trim())
+                };
+                notes.push(note);
+                displayNotes();
+                noteInput.value = '';
+                tagsInput.value = '';
+            } else {
+                alert('Введите текст заметки!');
+            }
+        });
+
+        function displayNotes() {
+            const notesList = document.getElementById('notesList');
+            notesList.innerHTML = '';
+
+            // Группировка заметок по тегам
+            const groupedNotes = notes.reduce((acc, note) => {
+                note.tags.forEach(tag => {
+                    if (!acc[tag]) {
+                        acc[tag] = [];
+                    }
+                    acc[tag].push(note);
+                });
+                return acc;
+            }, {});
+
+            // Отображение группированных заметок
+            for (const tag in groupedNotes) {
+                const tagGroup = document.createElement('div');
+                tagGroup.classList.add('tag-group');
+                const tagHeader = document.createElement('h3');
+                tagHeader.textContent = `Тег: ${tag}`;
+                tagGroup.appendChild(tagHeader);
+
+                groupedNotes[tag].forEach(note => {
+                    const noteDiv = document.createElement('div');
+                    noteDiv.classList.add('note');
+                    noteDiv.textContent = note.text + ' (Теги: ' + note.tags.join(', ') + ')';
+                    tagGroup.appendChild(noteDiv);
+                });
+
+                notesList.appendChild(tagGroup);
+            }
+        }
+    </script>
+</body>
+</html>
