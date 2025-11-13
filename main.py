@@ -18,7 +18,6 @@ def get_db_connection():
         return None
 
 
-# Главная страница (как у коллеги)
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -86,7 +85,6 @@ def create_note_api():
         conn.close()
 
 
-# Добавьте этот маршрут после существующих
 
 @app.route('/all-notes')
 def all_notes():
@@ -103,7 +101,6 @@ def get_all_notes_api():
     try:
         cursor = conn.cursor()
 
-        # Получаем все заметки с информацией о пользователе
         cursor.execute('''
             SELECT 
                 n.id, 
