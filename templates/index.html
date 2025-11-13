@@ -64,79 +64,147 @@
             border-radius: 5px;
         }
 
-        svg {
-            border: 1px solid #ccc;
-            margin-top: 20px;
+        .loading {
+            text-align: center;
+            color: #666;
+            padding: 20px;
+        }
+
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
         }
     </style>
-    <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 <body>
     <div class="container">
         <h1>Мои Заметки</h1>
-        <textarea id="noteInput" placeholder="Введите вашу заметку в Markdown..."></textarea>
+        <input type="text" id="noteTitle" placeholder="Заголовок заметки..." />
+        <textarea id="noteInput" placeholder="Введите вашу заметку..."></textarea>
         <input type="text" id="tagsInput" placeholder="Введите теги (через запятую)" />
         <button id="addNoteButton">Добавить Заметку</button>
 
+        <div style="text-align: center; margin-bottom: 20px;">
+            <a href="/all-notes" style="background: #6c757d; color: white; padding: 10px 20px;
+                text-decoration: none; border-radius: 5px; display: inline-block;">
+                    Посмотреть все заметки
+            </a>
+        </div>
+
         <h2>Список Заметок</h2>
-        <div id="notesList"></div> <!-- Контейнер для списка заметок -->
+        <div id="notesList">
+            <div class="loading">Загрузка заметок...</div>
+        </div>
     </div>
+
     <script>
-        let notes = [];
+        const DEFAULT_USER_ID = 1;
 
-        document.getElementById('addNoteButton').addEventListener('click', function() {
-            const noteInput = document.getElementById('noteInput');
-            const tagsInput = document.getElementById('tagsInput');
-            const noteText = noteInput.value.trim();
-            const tagsText = tagsInput.value.trim();
-
-            if (noteText) {
-                const note = {
-                    id: notes.length,
-                    text: noteText,
-                    tags: tagsText.split(',').map(tag => tag.trim())
-                };
-                notes.push(note);
-                displayNotes();
-                noteInput.value = '';
-                tagsInput.value = '';
-            } else {
-                alert('Введите текст заметки!');
-            }
+        // Загрузка заметок при старте
+        document.addEventListener('DOMContentLoaded', function() {
+            loadNotes();
         });
 
-        function displayNotes() {
-            const notesList = document.getElementById('notesList');
-            notesList.innerHTML = '';
+        // Обработчик кнопки добавления заметки
+        document.getElementById('addNoteButton').addEventListener('click', function() {
+            const noteTitle = document.getElementById('noteTitle').value.trim();
+            const noteContent = document.getElementById('noteInput').value.trim();
+            const tagsText = document.getElementById('tagsInput').value.trim();
 
-            // Группировка заметок по тегам
-            const groupedNotes = notes.reduce((acc, note) => {
-                note.tags.forEach(tag => {
-                    if (!acc[tag]) {
-                        acc[tag] = [];
-                    }
-                    acc[tag].push(note);
-                });
-                return acc;
-            }, {});
-
-            // Отображение группированных заметок
-            for (const tag in groupedNotes) {
-                const tagGroup = document.createElement('div');
-                tagGroup.classList.add('tag-group');
-                const tagHeader = document.createElement('h3');
-                tagHeader.textContent = `Тег: ${tag}`;
-                tagGroup.appendChild(tagHeader);
-
-                groupedNotes[tag].forEach(note => {
-                    const noteDiv = document.createElement('div');
-                    noteDiv.classList.add('note');
-                    noteDiv.textContent = note.text + ' (Теги: ' + note.tags.join(', ') + ')';
-                    tagGroup.appendChild(noteDiv);
-                });
-
-                notesList.appendChild(tagGroup);
+            if (!noteTitle || !noteContent) {
+                alert('Пожалуйста, заполните заголовок и содержание заметки!');
+                return;
             }
+
+            createNote(noteTitle, noteContent);
+        });
+
+        // Функция загрузки заметок с сервера
+        async function loadNotes() {
+            try {
+                const response = await fetch('/api/notes');
+                if (!response.ok) {
+                    throw new Error('Ошибка загрузки заметок');
+                }
+
+                const notes = await response.json();
+                displayNotes(notes);
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('notesList').innerHTML =
+                    '<div class="error">Ошибка загрузки заметок: ' + error.message + '</div>';
+            }
+        }
+
+        // Функция создания новой заметки
+        async function createNote(title, content) {
+            try {
+                const response = await fetch('/api/notes', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        user_id: DEFAULT_USER_ID,
+                        title: title,
+                        content: content
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Ошибка создания заметки');
+                }
+
+                // Очищаем форму
+                document.getElementById('noteTitle').value = '';
+                document.getElementById('noteInput').value = '';
+                document.getElementById('tagsInput').value = '';
+
+                // Перезагружаем заметки
+                loadNotes();
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Ошибка при создании заметки: ' + error.message);
+            }
+        }
+
+        // Функция отображения заметок
+        function displayNotes(notes) {
+            const notesList = document.getElementById('notesList');
+
+            if (notes.length === 0) {
+                notesList.innerHTML = '<div class="loading">Заметок пока нет. Создайте первую!</div>';
+                return;
+            }
+
+            let html = '';
+
+            notes.forEach(note => {
+                html += `
+                <div class="note">
+                    <strong>${escapeHtml(note.title)}</strong><br>
+                    ${escapeHtml(note.content)}<br>
+                    <small>Создано: ${new Date(note.created_at).toLocaleString('ru-RU')}</small>
+                </div>`;
+            });
+
+            notesList.innerHTML = html;
+        }
+
+        // Вспомогательная функция для экранирования HTML
+        function escapeHtml(unsafe) {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;")
+                .replace(/\n/g, '<br>');
         }
     </script>
 </body>
