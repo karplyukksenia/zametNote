@@ -3,6 +3,7 @@ import sqlite3
 import os
 from datetime import datetime
 
+
 def init_db():
     conn = sqlite3.connect('pkm_database.db')
     cursor = conn.cursor()
@@ -30,6 +31,16 @@ def init_db():
         )
     ''')
 
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS tags(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            note_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            FOREIGN KEY (note_id) REFERENCES notes (id)
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+    ''')
 
     # Создаем демо-пользователя если нет пользователей
     cursor.execute("SELECT COUNT(*) FROM users")
@@ -50,12 +61,14 @@ def get_db_connection():
     return conn
 
 
-
 app = Flask(__name__)
 init_db()
+
+
 @app.route('/')
 def index():
-  return render_template('index.html')
+    return render_template('index.html')
+
 
 @app.route('/all-notes')
 def all_notes():
@@ -118,7 +131,6 @@ def create_note_api():
         conn.close()
 
 
-
 if __name__ == '__main__':
-        #port = int(os.environ.get('PORT', 5000))
-        app.run()
+    # port = int(os.environ.get('PORT', 5000))
+    app.run()
