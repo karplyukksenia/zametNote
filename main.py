@@ -169,5 +169,45 @@ def get_all_notes_api():
     finally:
         conn.close()
 
+
+@app.route('/note/<int:note_id>')
+def view_note(note_id):
+    return render_template('view_note.html', note_id=note_id)
+
+# API для получения одной заметки
+@app.route('/api/notes/<int:note_id>', methods=['GET'])
+def get_note_api(note_id):
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT n.id, n.user_id, n.title, n.content, n.tags, 
+                   n.created_at, n.updated_at, u.username
+            FROM notes n
+            LEFT JOIN users u ON n.user_id = u.id
+            WHERE n.id = ?
+        ''', (note_id,))
+
+        row = cursor.fetchone()
+        if not row:
+            return jsonify({"error": "Note not found"}), 404
+
+        note = {
+            'id': row['id'],
+            'user_id': row['user_id'],
+            'title': row['title'],
+            'content': row['content'],
+            'tags': row['tags'],
+            'created_at': row['created_at'],
+            'updated_at': row['updated_at'],
+            'username': row['username']
+        }
+
+        return jsonify(note)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)

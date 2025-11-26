@@ -374,12 +374,9 @@
             displayAllNotes(filteredNotes);
         }
 
-        // Открытие заметки (можно расширить для просмотра полной версии)
+
         function openNote(noteId) {
-            const note = allNotes.find(n => n.id === noteId);
-            if (note) {
-                alert(`Заметка: ${note.title}\n\n${note.content}\n\nСоздана: ${new Date(note.created_at).toLocaleString('ru-RU')}`);
-            }
+            window.open(`/note/${noteId}`, '_blank');
         }
 
         // Функция экранирования HTML
