@@ -152,13 +152,16 @@ def logout():
     return redirect(url_for('login'))
 
 
-# Главная страница
+# Обновляем главную страницу
 @app.route('/')
 def index():
     if 'user_id' in session:
         return render_template('index.html')
     return render_template('login.html')
 
+@app.route('/all-notes')
+def all_notes():
+    return render_template('all_notes.html')
 
 # Обновляем API для заметок с учетом авторизации
 @app.route('/api/notes', methods=['GET'])
@@ -188,6 +191,7 @@ def get_notes_api():
                 'updated_at': row['updated_at']
             })
 
+        print(notes, cursor.fetchall())
         return jsonify(notes)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -271,7 +275,6 @@ def view_note(note_id):
         return redirect(url_for('login'))
     return render_template('view_note.html', note_id=note_id)
 
-
 # API для получения одной заметки
 @app.route('/api/notes/<int:note_id>', methods=['GET'])
 def get_note_api(note_id):
@@ -352,7 +355,6 @@ def update_note_api(note_id):
     finally:
         conn.close()
 
-
 @app.route('/api/graph-data', methods=['GET'])
 def get_graph_data():
     if 'user_id' not in session:
@@ -412,4 +414,4 @@ def all_notes():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=5000)
