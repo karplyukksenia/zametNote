@@ -133,73 +133,55 @@
         <input type="text" id="tagsInput" placeholder="Введите теги (через запятую)" />
         <button id="addNoteButton">Добавить Заметку</button>
 
-
         <div style="height: 30px;"></div>
         <div style="text-align: center; margin-bottom: 20px;">
             <a href="/all-notes" style="background: #6c757d; color: white; padding: 10px 20px;
                 text-decoration: none; border-radius: 5px; display: inline-block;">
-                    Посмотреть все заметки
+                Посмотреть все заметки
             </a>
         </div>
 
-        <h2>Граф заметок (🤔)</h2>
-        <div id="notesList">
-            <div class="loading">Загрузка графа...</div>
-        </div>
+        <h2>Граф заметок</h2>
+        <div id="graph-container" style="width: 100%; height: 500px; background: rgba(0,0,0,0.1); border-radius: 12px; margin-top: 15px;"></div>
+        <div id="graph-status" style="text-align: center; margin-top: 10px; color: #a0a0c0; font-size: 0.9em;">Загрузка графа заметок...</div>
     </div>
 
-    <script>
-        const DEFAULT_USER_ID = 1;
 
-        // Загрузка заметок при старте
-        //document.addEventListener('DOMContentLoaded', function() {
-        //    loadNotes();
-        //});
+    <div id="notification" class="notification">
+        Заметка сохранена!
+    </div>
 
-        // Обработчик кнопки добавления заметки
-        document.getElementById('addNoteButton').addEventListener('click', function() {
-            const noteTitle = document.getElementById('noteTitle').value.trim();
-            const noteContent = document.getElementById('noteInput').value.trim();
-            const tagsText = document.getElementById('tagsInput').value.trim();
+    <script src="https://unpkg.com/force-graph"></script>
+<script>
+    const DEFAULT_USER_ID = 1;
 
-            if (!noteTitle || !noteContent) {
-                alert('Пожалуйста, заполните заголовок и содержание заметки!');
-                return;
-            }
+    document.addEventListener('DOMContentLoaded', function() {
+        loadNotesGraph(); // Загружаем граф заметок при старте
+    });
 
-            createNote(noteTitle, noteContent, tagsText);
-        });
+    document.getElementById('addNoteButton').addEventListener('click', function() {
+        const noteTitle = document.getElementById('noteTitle').value.trim();
+        const noteContent = document.getElementById('noteInput').value.trim();
+        const tagsText = document.getElementById('tagsInput').value.trim();
 
-        // Функция загрузки заметок с сервера
-        async function loadNotes() {
-            try {
-                const response = await fetch('/api/notes');
-                if (!response.ok) {
-                    throw new Error('Ошибка загрузки заметок');
-                }
-
-                const notes = await response.json();
-                displayNotes(notes);
-            } catch (error) {
-                console.error('Error:', error);
-                document.getElementById('notesList').innerHTML =
-                    '<div class="error">Ошибка загрузки заметок: ' + error.message + '</div>';
-            }
+        if (!noteTitle || !noteContent) {
+            alert('Пожалуйста, заполните заголовок и содержание заметки!');
+            return;
         }
 
-        // Функция создания новой заметки
-        async function createNote(title, content, tags) {
+        createNote(noteTitle, noteContent, tagsText);
+    });
+
+    async function createNote(title, content, tags) {
         try {
             const response = await fetch('/api/notes', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     user_id: DEFAULT_USER_ID,
                     title: title,
                     content: content,
-                    tags: tags.split(',').map(tag => tag.trim())
+                    tags: tags.split(',').map(t => t.trim())
                 })
             });
 
@@ -213,66 +195,92 @@
             document.getElementById('noteInput').value = '';
             document.getElementById('tagsInput').value = '';
 
-            // Показываем уведомление
+            // Перезагружаем граф
+            loadNotesGraph();
             showNotification();
-
         } catch (error) {
             console.error('Error:', error);
             alert('Ошибка при создании заметки: ' + error.message);
         }
     }
 
-    // Функция для показа уведомления
+    // Загрузка и отображение графа заметок
+    async function loadNotesGraph() {
+        try {
+            document.getElementById('graph-status').textContent = 'Загрузка данных...';
+            const response = await fetch('/api/graph-data');
+            if (!response.ok) throw new Error('Не удалось загрузить граф');
+            const data = await response.json();
+
+            renderNotesGraph(data);
+            document.getElementById('graph-status').textContent =
+                `Заметок: ${data.nodes.length}, связей: ${data.links.length}`;
+        } catch (error) {
+            console.error('Graph error:', error);
+            document.getElementById('graph-status').textContent = 'Ошибка загрузки графа';
+        }
+    }
+
+    function renderNotesGraph(data) {
+    const container = document.getElementById('graph-container');
+    container.innerHTML = '';
+
+    if (data.nodes.length === 0) {
+        container.innerHTML = '<div style="height:100%;display:flex;align-items:center;justify-content:center;color:#a0a0c0;">Нет заметок</div>';
+        return;
+    }
+
+    // Создаём один экземпляр изображения (можно и разный на заметку, но пока одинаковый)
+    const img = new Image();
+    img.src = '/static/5276326984803189260.png'; // ← путь к вашему PNG
+    img.crossOrigin = "anonymous";
+
+    // Ждём загрузки изображения, чтобы избежать пустых узлов
+    img.onload = () => {
+        const Graph = ForceGraph()(container)
+            .graphData(data)
+            .nodeId("id")
+            .nodeLabel(node => `${node.title}\nТеги: ${node.tags.join(', ')}`)
+            .nodeVal(1) // размер узла регулируется вручную через рисование
+            .linkWidth(1.5)
+            .linkColor(() => 'rgba(0, 188, 212, 0.4)')
+            .backgroundColor('transparent')
+            .onNodeClick(node => {
+                alert(`Заметка: ${node.title}\nID: ${node.id}\nТеги: ${node.tags.join(', ')}`);
+            })
+
+            .nodeCanvasObject((node, ctx, globalScale) => {
+                const size = 30; // размер изображения в пикселях
+                // Рисуем PNG в позиции узла
+                ctx.drawImage(img, node.x - size / 2, node.y - size / 2, size, size);
+            })
+            .d3Force('link', ForceGraph.d3Force('link').distance(200))      // ← длина связи (по умолчанию ~30)
+            .d3Force('charge', ForceGraph.d3Force('charge').strength(-800));
+    };
+
+    img.onerror = () => {
+        console.error('Не удалось загрузить изображение /static/note.png');
+        // На случай ошибки — рисуем кружок
+        const Graph = ForceGraph()(container)
+            .graphData(data)
+            .nodeId("id")
+            .nodeCanvasObject((node, ctx) => {
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, 12, 0, 2 * Math.PI);
+                ctx.fillStyle = '#00bcd4';
+                ctx.fill();
+            });
+    };
+}
+
     function showNotification() {
         const notification = document.getElementById('notification');
         notification.classList.add('show');
-
         setTimeout(() => {
             notification.classList.remove('show');
-            notification.classList.add('hide');
-
-            setTimeout(() => {
-                notification.classList.remove('hide');
-            }, 300);
-        }, 3000);
+        }, 2500);
     }
-
-        // Функция отображения заметок
-        function displayNotes(notes) {
-            const notesList = document.getElementById('notesList');
-
-            if (notes.length === 0) {
-                notesList.innerHTML = '<div class="loading">Заметок пока нет. Создайте первую!</div>';
-                return;
-            }
-
-            let html = '';
-
-            notes.forEach(note => {
-                html += `
-                <div class="note">
-                    <strong>${escapeHtml(note.title)}</strong><br>
-                    ${escapeHtml(note.content)}<br>
-                    ${note.tags ? 'Теги: ' + escapeHtml(note.tags) : ''}<br>
-                    <small>Создано: ${new Date(note.created_at).toLocaleString('ru-RU')}</small>
-                </div>`;
-            });
-
-            notesList.innerHTML = html;
-        }
-
-        // Вспомогательная функция для экранирования HTML
-        function escapeHtml(unsafe) {
-            return unsafe
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;")
-                .replace(/\n/g, '<br>');
-        }
-    </script>
-
+</script>
     <div id="notification" class="notification">
          Заметка сохранена!
     </div>
