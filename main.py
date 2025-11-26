@@ -145,16 +145,6 @@ def login():
     return render_template('login.html')
 
 
-@app.route('/dashboard')
-def dashboard():
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-
-    return render_template('dashboard.html',
-                           username=session['username'],
-                           email=session.get('email', ''))
-
-
 @app.route('/logout')
 def logout():
     session.clear()
@@ -168,6 +158,9 @@ def index():
         return render_template('index.html')
     return render_template('login.html')
 
+@app.route('/all-notes')
+def all_notes():
+    return render_template('all_notes.html')
 
 # Обновляем API для заметок с учетом авторизации
 @app.route('/api/notes', methods=['GET'])
@@ -197,6 +190,7 @@ def get_notes_api():
                 'updated_at': row['updated_at']
             })
 
+        print(notes, cursor.fetchall())
         return jsonify(notes)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -204,6 +198,7 @@ def get_notes_api():
         conn.close()
 
 
+# API для создания заметки
 @app.route('/api/notes', methods=['POST'])
 def create_note_api():
     if 'user_id' not in session:
@@ -235,6 +230,7 @@ def create_note_api():
         conn.close()
 
 
+# получение заметок (версия от 26.11)
 @app.route('/api/notes/all', methods=['GET'])
 def get_all_notes_api():
     conn = get_db_connection()
@@ -274,7 +270,7 @@ def view_note(note_id):
         return redirect(url_for('login'))
     return render_template('view_note.html', note_id=note_id)
 
-
+# API для получения одной заметки
 @app.route('/api/notes/<int:note_id>', methods=['GET'])
 def get_note_api(note_id):
     if 'user_id' not in session:
@@ -313,6 +309,7 @@ def get_note_api(note_id):
         conn.close()
 
 
+# возможность изменения заметки
 @app.route('/api/notes/<int:note_id>', methods=['PUT'])
 def update_note_api(note_id):
     if 'user_id' not in session:
@@ -353,7 +350,6 @@ def update_note_api(note_id):
     finally:
         conn.close()
 
-
 @app.route('/api/graph-data', methods=['GET'])
 def get_graph_data():
     if 'user_id' not in session:
@@ -382,21 +378,14 @@ def get_graph_data():
             })
             note_tags[note_id] = tag_set
 
-        # Строим связи: каждая связь знает, через какие теги она образована
+        # Строим связи: если у двух заметок есть хотя бы 1 общий тег
         links = []
         note_ids = list(note_tags.keys())
         for i in range(len(note_ids)):
             for j in range(i + 1, len(note_ids)):
                 id1, id2 = note_ids[i], note_ids[j]
-                common = note_tags[id1] & note_tags[id2]
-                if common:
-                    # Берём ОДИН тег для простоты (например, первый по алфавиту)
-                    representative_tag = sorted(common)[0]
-                    links.append({
-                        "source": id1,
-                        "target": id2,
-                        "via_tag": representative_tag  # ← ключевое поле
-                    })
+                if note_tags[id1] & note_tags[id2]:  # пересечение множеств
+                    links.append({"source": id1, "target": id2})
 
         return jsonify({"nodes": nodes, "links": links})
 
