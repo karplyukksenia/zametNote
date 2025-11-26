@@ -136,5 +136,38 @@ def create_note_api():
         conn.close()
 
 
+# получение заметок (версия от 26.11)
+@app.route('/api/notes/all', methods=['GET'])
+def get_all_notes_api():
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT n.id, n.user_id, n.title, n.content, n.tags, 
+                   n.created_at, n.updated_at, u.username
+            FROM notes n
+            LEFT JOIN users u ON n.user_id = u.id
+            ORDER BY n.updated_at DESC
+        ''')
+
+        notes = []
+        for row in cursor:
+            notes.append({
+                'id': row['id'],
+                'user_id': row['user_id'],
+                'title': row['title'],
+                'content': row['content'],
+                'tags': row['tags'],
+                'created_at': row['created_at'],
+                'updated_at': row['updated_at'],
+                'username': row['username']
+            })
+
+        return jsonify(notes)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
