@@ -169,6 +169,85 @@ def get_all_notes_api():
     finally:
         conn.close()
 
+
+@app.route('/note/<int:note_id>')
+def view_note(note_id):
+    return render_template('view_note.html', note_id=note_id)
+
+# API для получения одной заметки
+@app.route('/api/notes/<int:note_id>', methods=['GET'])
+def get_note_api(note_id):
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute('''
+            SELECT n.id, n.user_id, n.title, n.content, n.tags, 
+                   n.created_at, n.updated_at, u.username
+            FROM notes n
+            LEFT JOIN users u ON n.user_id = u.id
+            WHERE n.id = ?
+        ''', (note_id,))
+
+        row = cursor.fetchone()
+        if not row:
+            return jsonify({"error": "Note not found"}), 404
+
+        note = {
+            'id': row['id'],
+            'user_id': row['user_id'],
+            'title': row['title'],
+            'content': row['content'],
+            'tags': row['tags'],
+            'created_at': row['created_at'],
+            'updated_at': row['updated_at'],
+            'username': row['username']
+        }
+
+        return jsonify(note)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+# возможность изменения заметки
+@app.route('/api/notes/<int:note_id>', methods=['PUT'])
+def update_note_api(note_id):
+    data = request.get_json()
+    print(f"Updating note {note_id} with data:", data)
+
+    if not data or not all(k in data for k in ['title', 'content', 'tags']):
+        return jsonify({"error": "Missing required fields: title, content, tags"}), 400
+
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+
+        # Обновляем основную информацию заметки
+        cursor.execute('''
+            UPDATE notes 
+            SET title = ?, content = ?, tags = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        ''', (data['title'], data['content'], ' '.join(i for i in data['tags']), note_id))
+
+        # Обновляем теги в таблице tags
+        # Сначала удаляем старые теги
+        cursor.execute('DELETE FROM tags WHERE note_id = ?', (note_id,))
+
+        # Добавляем новые теги
+        for tag in data['tags']:
+            cursor.execute('INSERT INTO tags (user_id, note_id, name) VALUES (?, ?, ?)',
+                           (data.get('user_id', 1), note_id, tag))
+
+        conn.commit()
+
+        return jsonify({"message": "Note updated successfully"}), 200
+    except Exception as e:
+        conn.rollback()
+        return jsonify({"error": str(e)}), 400
+    finally:
+        conn.close()
+
 @app.route('/api/graph-data', methods=['GET'])
 def get_graph_data():
     conn = get_db_connection()
@@ -213,5 +292,7 @@ def get_graph_data():
         return jsonify({"error": str(e)}), 500
     finally:
         conn.close()
+
+
 if __name__ == '__main__':
-    app.run()
+    app.run(host='0.0.0.0', port=5000)
