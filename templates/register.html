@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Регистрация в системе заметок</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #1e1e2f, #3a3a5a);
+            color: #eaeaea;
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 450px;
+            width: 100%;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(12px);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: box-shadow 0.4s ease;
+        }
+
+        .container:hover {
+            box-shadow: 0 12px 48px rgba(0, 188, 212, 0.25);
+        }
+
+        .back-button {
+            display: inline-block;
+            background: rgba(0, 188, 212, 0.2);
+            color: #00bcd4;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(0, 188, 212, 0.3);
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .back-button:hover {
+            background: rgba(0, 188, 212, 0.3);
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 188, 212, 0.3);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        h1 {
+            color: #00bcd4;
+            margin: 0;
+            font-size: 2.2em;
+            text-shadow: 0 0 10px rgba(0, 188, 212, 0.6);
+            letter-spacing: 0.5px;
+        }
+
+        .subtitle {
+            color: #a0a0c0;
+            font-size: 1.1em;
+            margin-top: 8px;
+        }
+
+        .register-form {
+            margin-top: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        input[type="text"], input[type="email"], input[type="password"] {
+            width: 100%;
+            padding: 15px;
+            font-size: 16px;
+            border-radius: 10px;
+            border: none;
+            background: rgba(255, 255, 255, 0.15);
+            color: #eaeaea;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+        }
+
+        input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus {
+            outline: none;
+            background: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 0 0 2px rgba(0, 188, 212, 0.5);
+        }
+
+        input[type="text"]::placeholder, input[type="email"]::placeholder, input[type="password"]::placeholder {
+            color: rgba(234, 234, 234, 0.6);
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(90deg, #00bcd4, #3f51b5);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 188, 212, 0.3);
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background: linear-gradient(90deg, #3f51b5, #00bcd4);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 188, 212, 0.4);
+        }
+
+        .error {
+            background: rgba(244, 67, 54, 0.1);
+            color: #ff8a80;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border-left: 3px solid #f44336;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        .login-link {
+            text-align: center;
+            margin-top: 25px;
+            color: #a0a0c0;
+        }
+
+        .login-link a {
+            color: #00bcd4;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s ease;
+        }
+
+        .login-link a:hover {
+            color: #4fc3f7;
+            text-decoration: underline;
+        }
+
+        .form-hint {
+            color: #a0a0c0;
+            font-size: 0.85em;
+            margin-top: 5px;
+            text-align: center;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 30px 20px;
+                margin: 10px;
+            }
+
+            h1 {
+                font-size: 1.8em;
+            }
+
+            input[type="text"], input[type="email"], input[type="password"] {
+                padding: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="/" class="back-button">← На главную</a>
+
+    <div class="container">
+        <div class="header">
+            <h1>Регистрация</h1>
+            <div class="subtitle">Создайте свой аккаунт для работы с заметками</div>
+        </div>
+
+        <div class="error-message" style="display: none;"></div>
+
+        <form method="POST" class="register-form">
+        <div class="form-group">
+            <input type="text" name="username" placeholder="Как к вам обращаться?" required>
+        </div>
+
+        <div class="form-group">
+            <input type="email" name="email" placeholder="Email для входа" required>
+        </div>
+
+        <div class="form-group">
+            <input type="password" name="password" placeholder="Пароль" required>
+        </div>
+
+        <div class="form-hint">
+            Пароль должен содержать не менее 6 символов
+        </div>
+
+        <button type="submit">Создать аккаунт</button>
+        </form>
+
+        <div class="login-link">
+            Уже есть аккаунт? <a href="/login">Войти в систему</a>
+        </div>
+    </div>
+</body>
+</html>

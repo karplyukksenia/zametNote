@@ -1,7 +1,8 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash
 import sqlite3
 import os
 from datetime import datetime
+import bcrypt
 
 
 def init_db():
@@ -12,7 +13,7 @@ def init_db():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS users(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT NOT NULL UNIQUE,
+            username TEXT NOT NULL,
             email TEXT NOT NULL UNIQUE,
             password_hash TEXT NOT NULL
         )
@@ -45,9 +46,11 @@ def init_db():
     # Создаем демо-пользователя если нет пользователей
     cursor.execute("SELECT COUNT(*) FROM users")
     if cursor.fetchone()[0] == 0:
+        # Хешируем пароль для демо-пользователя
+        demo_password_hash = bcrypt.hashpw('demo'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         cursor.execute(
             "INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)",
-            ('demo_user', 'demo@example.com', 'demo_hash')
+            ('demo_user', 'demo@example.com', demo_password_hash)
         )
 
     conn.commit()
@@ -62,30 +65,125 @@ def get_db_connection():
 
 
 app = Flask(__name__)
+app.secret_key = 'c186fd3efcc9bbab9ca1da6df7d2e7f3b07e285c05996356571db5f40cd83fd9'
 init_db()
 
 
+# Маршруты аутентификации
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        username = request.form['username']
+        email = request.form['email']
+        password = request.form['password']
+
+        # Проверка длины пароля
+        if len(password) < 6:
+            flash('Пароль должен содержать не менее 6 символов')
+            return render_template('register.html')
+
+        # Проверка на существующий EMAIL
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        cur.execute("SELECT id FROM users WHERE email = ?", (email,))
+        if cur.fetchone():
+            flash('Пользователь с таким email уже существует')
+            cur.close()
+            conn.close()
+            return render_template('register.html')
+
+        # Хеширование пароля
+        password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+        # Создание пользователя
+        cur.execute(
+            "INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)",
+            (username, email, password_hash)
+        )
+
+        conn.commit()
+        cur.close()
+        conn.close()
+
+        flash('Регистрация успешна! Теперь вы можете войти.')
+        return redirect(url_for('login'))
+
+    return render_template('register.html')
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        email = request.form['email']
+        password = request.form['password']
+
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        # Ищем пользователя по email
+        cur.execute(
+            "SELECT id, username, password_hash FROM users WHERE email = ?",
+            (email,)
+        )
+        user = cur.fetchone()
+
+        if user and bcrypt.checkpw(password.encode('utf-8'), user[2].encode('utf-8')):
+            session['user_id'] = user[0]
+            session['username'] = user[1]
+            session['email'] = email
+            cur.close()
+            conn.close()
+            return redirect(url_for('dashboard'))
+        else:
+            flash('Неверный email или пароль')
+
+        cur.close()
+        conn.close()
+        return render_template('login.html')
+
+    return render_template('login.html')
+
+
+@app.route('/dashboard')
+def dashboard():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+
+    return render_template('dashboard.html',
+                           username=session['username'],
+                           email=session.get('email', ''))
+
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return render_template('login.html')
+
+
+# Обновляем главную страницу
 @app.route('/')
 def index():
-    return render_template('index.html')
+    if 'user_id' in session:
+        return render_template('index.html')
+    return render_template('login.html')
 
 
-@app.route('/all-notes')
-def all_notes():
-    return render_template('all_notes.html')
-
-
-# API для получения заметок
+# Обновляем API для заметок с учетом авторизации
 @app.route('/api/notes', methods=['GET'])
 def get_notes_api():
+    if 'user_id' not in session:
+        return jsonify({"error": "Not authorized"}), 401
+
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
         cursor.execute('''
             SELECT n.id, n.user_id, n.title, n.content,n.tags, n.created_at, n.updated_at
             FROM notes n
+            WHERE n.user_id = ?
             ORDER BY n.updated_at DESC
-        ''')
+        ''', (session['user_id'],))
 
         notes = []
         for row in cursor:
@@ -99,7 +197,6 @@ def get_notes_api():
                 'updated_at': row['updated_at']
             })
 
-        print(notes, cursor.fetchall())
         return jsonify(notes)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -107,26 +204,28 @@ def get_notes_api():
         conn.close()
 
 
-# API для создания заметки
 @app.route('/api/notes', methods=['POST'])
 def create_note_api():
+    if 'user_id' not in session:
+        return jsonify({"error": "Not authorized"}), 401
+
     data = request.get_json()
     print(data)
-    if not data or not all(k in data for k in ['user_id', 'title', 'content', 'tags']):
-        return jsonify({"error": "Missing required fields: user_id, title, content"}), 400
+    if not data or not all(k in data for k in ['title', 'content', 'tags']):
+        return jsonify({"error": "Missing required fields: title, content"}), 400
 
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
         cursor.execute(
             'INSERT INTO notes (user_id, title, content, tags) VALUES (?, ?, ?, ?)',
-            (data['user_id'], data['title'], data['content'], ' '.join(i for i in data['tags']))
+            (session['user_id'], data['title'], data['content'], ' '.join(i for i in data['tags']))
         )
         cursor.execute('SELECT id FROM notes WHERE title = ?', (data['title'],))
         note_id = cursor.fetchone()[0]
         for tag in data['tags']:
             cursor.execute('INSERT INTO tags (user_id, note_id, name) VALUES (?, ?, ?)',
-                           (data['user_id'], note_id, tag,))
+                           (session['user_id'], note_id, tag,))
 
         conn.commit()
         return jsonify({"message": "Note created successfully"}), 201
@@ -136,7 +235,6 @@ def create_note_api():
         conn.close()
 
 
-# получение заметок (версия от 26.11)
 @app.route('/api/notes/all', methods=['GET'])
 def get_all_notes_api():
     conn = get_db_connection()
@@ -172,11 +270,16 @@ def get_all_notes_api():
 
 @app.route('/note/<int:note_id>')
 def view_note(note_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
     return render_template('view_note.html', note_id=note_id)
 
-# API для получения одной заметки
+
 @app.route('/api/notes/<int:note_id>', methods=['GET'])
 def get_note_api(note_id):
+    if 'user_id' not in session:
+        return jsonify({"error": "Not authorized"}), 401
+
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
@@ -185,8 +288,8 @@ def get_note_api(note_id):
                    n.created_at, n.updated_at, u.username
             FROM notes n
             LEFT JOIN users u ON n.user_id = u.id
-            WHERE n.id = ?
-        ''', (note_id,))
+            WHERE n.id = ? AND n.user_id = ?
+        ''', (note_id, session['user_id']))
 
         row = cursor.fetchone()
         if not row:
@@ -210,9 +313,11 @@ def get_note_api(note_id):
         conn.close()
 
 
-# возможность изменения заметки
 @app.route('/api/notes/<int:note_id>', methods=['PUT'])
 def update_note_api(note_id):
+    if 'user_id' not in session:
+        return jsonify({"error": "Not authorized"}), 401
+
     data = request.get_json()
     print(f"Updating note {note_id} with data:", data)
 
@@ -227,17 +332,17 @@ def update_note_api(note_id):
         cursor.execute('''
             UPDATE notes 
             SET title = ?, content = ?, tags = ?, updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-        ''', (data['title'], data['content'], ' '.join(i for i in data['tags']), note_id))
+            WHERE id = ? AND user_id = ?
+        ''', (data['title'], data['content'], ' '.join(i for i in data['tags']), note_id, session['user_id']))
 
         # Обновляем теги в таблице tags
         # Сначала удаляем старые теги
-        cursor.execute('DELETE FROM tags WHERE note_id = ?', (note_id,))
+        cursor.execute('DELETE FROM tags WHERE note_id = ? AND user_id = ?', (note_id, session['user_id']))
 
         # Добавляем новые теги
         for tag in data['tags']:
             cursor.execute('INSERT INTO tags (user_id, note_id, name) VALUES (?, ?, ?)',
-                           (data.get('user_id', 1), note_id, tag))
+                           (session['user_id'], note_id, tag))
 
         conn.commit()
 
@@ -248,27 +353,27 @@ def update_note_api(note_id):
     finally:
         conn.close()
 
+
 @app.route('/api/graph-data', methods=['GET'])
 def get_graph_data():
+    if 'user_id' not in session:
+        return jsonify({"error": "Not authorized"}), 401
+
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
-        cursor.execute('''
-            SELECT id, title, tags
-            FROM notes
-            ORDER BY id
-        ''')
+        cursor.execute('SELECT id, title, tags FROM notes WHERE user_id = ? ORDER BY id', (session['user_id'],))
         rows = cursor.fetchall()
 
         nodes = []
-        note_tags = {}  # id -> set(tags)
+        note_tags = {}
 
         for row in rows:
             note_id = row['id']
             title = row['title']
             tags_str = row['tags'] or ""
-            tags_list = tags_str.split() if tags_str else []
-            tag_set = set(tag.lower() for tag in tags_list if tag.strip())
+            tags_list = [t.strip().lower() for t in tags_str.split() if t.strip()]
+            tag_set = set(tags_list)
 
             nodes.append({
                 "id": note_id,
@@ -277,14 +382,21 @@ def get_graph_data():
             })
             note_tags[note_id] = tag_set
 
-        # Строим связи: если у двух заметок есть хотя бы 1 общий тег
+        # Строим связи: каждая связь знает, через какие теги она образована
         links = []
         note_ids = list(note_tags.keys())
         for i in range(len(note_ids)):
             for j in range(i + 1, len(note_ids)):
                 id1, id2 = note_ids[i], note_ids[j]
-                if note_tags[id1] & note_tags[id2]:  # пересечение множеств
-                    links.append({"source": id1, "target": id2})
+                common = note_tags[id1] & note_tags[id2]
+                if common:
+                    # Берём ОДИН тег для простоты (например, первый по алфавиту)
+                    representative_tag = sorted(common)[0]
+                    links.append({
+                        "source": id1,
+                        "target": id2,
+                        "via_tag": representative_tag  # ← ключевое поле
+                    })
 
         return jsonify({"nodes": nodes, "links": links})
 
@@ -292,6 +404,13 @@ def get_graph_data():
         return jsonify({"error": str(e)}), 500
     finally:
         conn.close()
+
+
+@app.route('/all-notes')
+def all_notes():
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+    return render_template('all_notes.html')
 
 
 if __name__ == '__main__':
