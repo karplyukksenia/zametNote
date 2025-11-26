@@ -105,7 +105,14 @@
         <input type="text" id="tagsInput" placeholder="Введите теги (через запятую)" />
         <button id="addNoteButton">Добавить Заметку</button>
 
-        <h2>Список Заметок</h2>
+        <div style="text-align: center; margin-bottom: 20px;">
+            <a href="/all-notes" style="background: #6c757d; color: white; padding: 10px 20px;
+                text-decoration: none; border-radius: 5px; display: inline-block;">
+                    Посмотреть все заметки
+            </a>
+        </div>
+
+        <h2>Граф заметок (🤔)</h2>
         <div id="notesList">
             <div class="loading">Загрузка заметок...</div>
         </div>
@@ -115,9 +122,9 @@
         const DEFAULT_USER_ID = 1;
 
         // Загрузка заметок при старте
-        document.addEventListener('DOMContentLoaded', function() {
-            loadNotes();
-        });
+        //document.addEventListener('DOMContentLoaded', function() {
+        //    loadNotes();
+        //});
 
         // Обработчик кнопки добавления заметки
         document.getElementById('addNoteButton').addEventListener('click', function() {
@@ -178,7 +185,7 @@
                 document.getElementById('tagsInput').value = '';
 
                 // Перезагружаем заметки
-                loadNotes();
+                // loadNotes();
 
             } catch (error) {
                 console.error('Error:', error);
