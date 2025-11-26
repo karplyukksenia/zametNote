@@ -205,7 +205,7 @@
 
     <div class="container">
         <div class="header">
-            <h1>📝 Вход в систему</h1>
+            <h1>Вход в систему</h1>
             <div class="subtitle">Добро пожаловать в ваше пространство для заметок</div>
         </div>
 
@@ -219,7 +219,7 @@
             {% endif %}
         {% endwith %}
 
-        <form method="POST" class="login-form">
+        <form method="POST" action="/login" class="login-form">
             <div class="form-group">
                 <input type="email" name="email" placeholder="Ваш email" required>
             </div>

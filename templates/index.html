@@ -127,7 +127,14 @@
 </style>
 <body>
     <div class="container">
-        <a href="/logout" class="logout-btn">Выйти (это надо куда-нибудь подвинуть)</a>
+
+        <div style="text-align: right; margin-bottom: 20px;">
+            <a href="/logout" style="background: #f44336; color: white; padding: 10px 15px;
+            text-decoration: none; border-radius: 5px; display: inline-block;">
+                Выйти (куда эту кнопку засунуть)
+            </a>
+        </div>
+
         <h1>Мои Заметки</h1>
         <input type="text" id="noteTitle" placeholder="Заголовок заметки..." />
         <textarea id="noteInput" placeholder="Введите вашу заметку..."></textarea>
@@ -154,7 +161,6 @@
 
     <script src="https://unpkg.com/force-graph"></script>
 <script>
-    const DEFAULT_USER_ID = 1;
 
     document.addEventListener('DOMContentLoaded', function() {
         loadNotesGraph();
@@ -179,7 +185,6 @@
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    user_id: DEFAULT_USER_ID,
                     title: title,
                     content: content,
                     tags: tags.split(',').map(t => t.trim())

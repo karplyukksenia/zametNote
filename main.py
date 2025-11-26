@@ -64,7 +64,7 @@ def get_db_connection():
     return conn
 
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static', static_url_path='/static')
 app.secret_key = 'c186fd3efcc9bbab9ca1da6df7d2e7f3b07e285c05996356571db5f40cd83fd9'
 init_db()
 
@@ -134,7 +134,8 @@ def login():
             session['email'] = email
             cur.close()
             conn.close()
-            return redirect(url_for('dashboard'))
+            # РЕДИРЕКТ НА ГЛАВНУЮ СТРАНИЦУ (index)
+            return redirect(url_for('index'))
         else:
             flash('Неверный email или пароль')
 
@@ -148,19 +149,16 @@ def login():
 @app.route('/logout')
 def logout():
     session.clear()
-    return render_template('login.html')
+    return redirect(url_for('login'))
 
 
-# Обновляем главную страницу
+# Главная страница
 @app.route('/')
 def index():
     if 'user_id' in session:
         return render_template('index.html')
     return render_template('login.html')
 
-@app.route('/all-notes')
-def all_notes():
-    return render_template('all_notes.html')
 
 # Обновляем API для заметок с учетом авторизации
 @app.route('/api/notes', methods=['GET'])
@@ -190,7 +188,6 @@ def get_notes_api():
                 'updated_at': row['updated_at']
             })
 
-        print(notes, cursor.fetchall())
         return jsonify(notes)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -233,6 +230,9 @@ def create_note_api():
 # получение заметок (версия от 26.11)
 @app.route('/api/notes/all', methods=['GET'])
 def get_all_notes_api():
+    if 'user_id' not in session:
+        return jsonify({"error": "Not authorized"}), 401
+
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
@@ -241,8 +241,9 @@ def get_all_notes_api():
                    n.created_at, n.updated_at, u.username
             FROM notes n
             LEFT JOIN users u ON n.user_id = u.id
+            WHERE n.user_id = ?
             ORDER BY n.updated_at DESC
-        ''')
+        ''', (session['user_id'],))
 
         notes = []
         for row in cursor:
@@ -269,6 +270,7 @@ def view_note(note_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
     return render_template('view_note.html', note_id=note_id)
+
 
 # API для получения одной заметки
 @app.route('/api/notes/<int:note_id>', methods=['GET'])
@@ -350,6 +352,7 @@ def update_note_api(note_id):
     finally:
         conn.close()
 
+
 @app.route('/api/graph-data', methods=['GET'])
 def get_graph_data():
     if 'user_id' not in session:
@@ -384,8 +387,14 @@ def get_graph_data():
         for i in range(len(note_ids)):
             for j in range(i + 1, len(note_ids)):
                 id1, id2 = note_ids[i], note_ids[j]
-                if note_tags[id1] & note_tags[id2]:  # пересечение множеств
-                    links.append({"source": id1, "target": id2})
+                common_tags = note_tags[id1] & note_tags[id2]  # пересечение множеств
+                if common_tags:
+                    # Используем первый общий тег для связи
+                    links.append({
+                        "source": id1,
+                        "target": id2,
+                        "via_tag": list(common_tags)[0]
+                    })
 
         return jsonify({"nodes": nodes, "links": links})
 
@@ -403,4 +412,4 @@ def all_notes():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(debug=True)
