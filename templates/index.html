@@ -156,7 +156,7 @@
     const DEFAULT_USER_ID = 1;
 
     document.addEventListener('DOMContentLoaded', function() {
-        loadNotesGraph(); // Загружаем граф заметок при старте
+        loadNotesGraph();
     });
 
     document.getElementById('addNoteButton').addEventListener('click', function() {
@@ -190,12 +190,10 @@
                 throw new Error(errorData.error || 'Ошибка создания заметки');
             }
 
-            // Очищаем форму
             document.getElementById('noteTitle').value = '';
             document.getElementById('noteInput').value = '';
             document.getElementById('tagsInput').value = '';
 
-            // Перезагружаем граф
             loadNotesGraph();
             showNotification();
         } catch (error) {
@@ -204,7 +202,6 @@
         }
     }
 
-    // Загрузка и отображение графа заметок
     async function loadNotesGraph() {
         try {
             document.getElementById('graph-status').textContent = 'Загрузка данных...';
@@ -230,48 +227,99 @@
         return;
     }
 
-    // Создаём один экземпляр изображения (можно и разный на заметку, но пока одинаковый)
+    function generateTagColor(tag) {
+        let hash = 0;
+        for (let i = 0; i < tag.length; i++) {
+            hash = tag.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const hue = 180 + Math.abs(hash) % 40; // 180–220
+        const saturation = 70 + (hash % 20);   // 70–90%
+        const lightness = 55 + (hash % 15);    // 55–70%
+        return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+    }
+
+    const tagColors = {};
+    data.links.forEach(link => {
+        const tag = link.via_tag;
+        if (tag && !tagColors[tag]) {
+            tagColors[tag] = generateTagColor(tag);
+        }
+    });
+
     const img = new Image();
-    img.src = '/static/5276326984803189260.png'; // ← путь к вашему PNG
+    img.src = '/static/5276326984803189260.png';
     img.crossOrigin = "anonymous";
 
-    // Ждём загрузки изображения, чтобы избежать пустых узлов
     img.onload = () => {
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+
         const Graph = ForceGraph()(container)
             .graphData(data)
             .nodeId("id")
             .nodeLabel(node => `${node.title}\nТеги: ${node.tags.join(', ')}`)
-            .nodeVal(1) // размер узла регулируется вручную через рисование
-            .linkWidth(1.5)
-            .linkColor(() => 'rgba(0, 188, 212, 0.4)')
-            .backgroundColor('transparent')
-            .onNodeClick(node => {
-                alert(`Заметка: ${node.title}\nID: ${node.id}\nТеги: ${node.tags.join(', ')}`);
-            })
-
             .nodeCanvasObject((node, ctx, globalScale) => {
-                const size = 30; // размер изображения в пикселях
-                // Рисуем PNG в позиции узла
+                const size = 15;
                 ctx.drawImage(img, node.x - size / 2, node.y - size / 2, size, size);
             })
-            .d3Force('link', ForceGraph.d3Force('link').distance(200))      // ← длина связи (по умолчанию ~30)
-            .d3Force('charge', ForceGraph.d3Force('charge').strength(-800));
+            .linkWidth(2)
+            .linkColor(link => tagColors[link.via_tag] || '#00bcd4')
+            .backgroundColor('transparent')
+            .onNodeClick(node => {
+                window.location.href = `/note/${node.id}`;
+            })
+            .d3Force('link', ForceGraph.d3Force('link').distance(130))
+            .d3Force('charge', ForceGraph.d3Force('charge').strength(-800))
+            .d3Force('center', ForceGraph.d3Force('center').x(width / 2).y(height / 2))
+            .d3Force('collide', ForceGraph.d3Force('collide').radius(50))
+            .width(width)
+            .height(height);
+
+        // Зафиксировать узлы после их первой отрисовки
+        Graph.onEngineStop(() => {
+            data.nodes.forEach(node => {
+                node.fx = node.x; // Фиксируем положение по X
+                node.fy = node.y; // Фиксируем положение по Y
+            });
+            Graph.d3Force('charge').strength(0); // Отключаем силу отталкивания
+            Graph.d3Force('center').strength(0); // Отключаем силу центрирования
+        });
     };
 
     img.onerror = () => {
-        console.error('Не удалось загрузить изображение /static/note.png');
-        // На случай ошибки — рисуем кружок
+        console.error('Изображение не загружено. Используем резервный кружок.');
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+
         const Graph = ForceGraph()(container)
             .graphData(data)
             .nodeId("id")
             .nodeCanvasObject((node, ctx) => {
                 ctx.beginPath();
-                ctx.arc(node.x, node.y, 12, 0, 2 * Math.PI);
+                ctx.arc(node.x, node.y, 16, 0, 2 * Math.PI);
                 ctx.fillStyle = '#00bcd4';
                 ctx.fill();
+            })
+            .linkColor(link => tagColors[link.via_tag] || '#00bcd4')
+            .d3Force('link', ForceGraph.d3Force('link').distance(130))
+            .d3Force('charge', ForceGraph.d3Force('charge').strength(-800))
+            .d3Force('center', ForceGraph.d3Force('center').x(width / 2).y(height / 2))
+            .d3Force('collide', ForceGraph.d3Force('collide').radius(50))
+            .width(width)
+            .height(height);
+
+        // Зафиксировать узлы после их первой отрисовки
+        Graph.onEngineStop(() => {
+            data.nodes.forEach(node => {
+                node.fx = node.x; // Фиксируем положение по X
+                node.fy = node.y; // Фиксируем положение по Y
             });
+            Graph.d3Force('charge').strength(0); // Отключаем силу отталкивания
+            Graph.d3Force('center').strength(0); // Отключаем силу центрирования
+        });
     };
 }
+
 
     function showNotification() {
         const notification = document.getElementById('notification');
