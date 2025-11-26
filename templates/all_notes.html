@@ -271,22 +271,23 @@
         });
 
         // Загрузка всех заметок
-        async function loadAllNotes() {
-            try {
-                const response = await fetch('/api/notes/all');
-                if (!response.ok) {
-                    throw new Error('Ошибка загрузки заметок');
-                }
 
-                allNotes = await response.json();
-                displayAllNotes(allNotes);
-                updateStats(allNotes);
-            } catch (error) {
-                console.error('Error:', error);
-                document.getElementById('notesContainer').innerHTML =
-                    '<div class="error">Ошибка загрузки заметок: ' + error.message + '</div>';
+    async function loadAllNotes() {
+        try {
+            const response = await fetch('/api/notes/all'); // Было '/api/notes/all'
+            if (!response.ok) {
+                throw new Error('Ошибка загрузки заметок');
             }
+
+            allNotes = await response.json();
+            displayAllNotes(allNotes);
+            updateStats(allNotes);
+        } catch (error) {
+            console.error('Error:', error);
+            document.getElementById('notesContainer').innerHTML =
+                '<div class="error">Ошибка загрузки заметок: ' + error.message + '</div>';
         }
+    }
 
         // Отображение всех заметок
         function displayAllNotes(notes) {

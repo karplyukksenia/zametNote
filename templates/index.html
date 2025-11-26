@@ -184,39 +184,53 @@
 
         // Функция создания новой заметки
         async function createNote(title, content, tags) {
-            try {
-                const response = await fetch('/api/notes', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        user_id: DEFAULT_USER_ID,
-                        title: title,
-                        content: content,
-                        tags: tags.split(',').map(tag => tag.trim())
+        try {
+            const response = await fetch('/api/notes', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    user_id: DEFAULT_USER_ID,
+                    title: title,
+                    content: content,
+                    tags: tags.split(',').map(tag => tag.trim())
+                })
+            });
 
-                    })
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || 'Ошибка создания заметки');
-                }
-
-                // Очищаем форму
-                document.getElementById('noteTitle').value = '';
-                document.getElementById('noteInput').value = '';
-                document.getElementById('tagsInput').value = '';
-
-                // Перезагружаем заметки
-                // loadNotes();
-
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Ошибка при создании заметки: ' + error.message);
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Ошибка создания заметки');
             }
+
+            // Очищаем форму
+            document.getElementById('noteTitle').value = '';
+            document.getElementById('noteInput').value = '';
+            document.getElementById('tagsInput').value = '';
+
+            // Показываем уведомление
+            showNotification();
+
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Ошибка при создании заметки: ' + error.message);
         }
+    }
+
+    // Функция для показа уведомления
+    function showNotification() {
+        const notification = document.getElementById('notification');
+        notification.classList.add('show');
+
+        setTimeout(() => {
+            notification.classList.remove('show');
+            notification.classList.add('hide');
+
+            setTimeout(() => {
+                notification.classList.remove('hide');
+            }, 300);
+        }, 3000);
+    }
 
         // Функция отображения заметок
         function displayNotes(notes) {
