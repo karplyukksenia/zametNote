@@ -158,9 +158,6 @@ def index():
         return render_template('index.html')
     return render_template('login.html')
 
-@app.route('/all-notes')
-def all_notes():
-    return render_template('all_notes.html')
 
 # Обновляем API для заметок с учетом авторизации
 @app.route('/api/notes', methods=['GET'])
