@@ -7,7 +7,7 @@
 Простое, полностью локальное веб-приложение для ведения заметок и организации личных знаний.  
 Никаких облаков, никаких подписок — всё хранится в одном файле SQLite у тебя на компьютере.
 
-## Особенности (на декабрь 2025)
+## Текущие функции
 
 - Регистрация / логин / логаут (пароли надёжно хэшируются через bcrypt)  
 - Создание, редактирование и удаление заметок  
@@ -36,17 +36,24 @@ python -m venv venv
 source venv/bin/activate        # Linux / macOS
 # venv\Scripts\activate         # Windows
 
-# 3. Устанавливаем зависимости
+# 3. Создаем файл .env в общей папке
+FLASK_SECRET_KEY=your_secret_key_here
+# Для генерации рекомендуется следующий код:
+# import secrets
+# print(secrets.token_hex(32)) 
+
+# 4. Устанавливаем зависимости
 pip install -r requirements.txt
 # Если requirements.txt нет:
 # pip install flask flask-bcrypt
 
-# 4. Запускаем
+# 5. Запускаем
 python main.py
 ```
 
 ## Веб-версия
 
 Доступна веб-версия приложения: https://zametnote.onrender.com/
+
 
 
