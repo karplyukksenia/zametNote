@@ -65,7 +65,7 @@ def get_db_connection():
 
 
 app = Flask(__name__, static_folder='static', static_url_path='/static')
-app.secret_key = 'c186fd3efcc9bbab9ca1da6df7d2e7f3b07e285c05996356571db5f40cd83fd9'
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'fallback_secret_key')
 init_db()
 
 
