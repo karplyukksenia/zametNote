@@ -1,47 +1,48 @@
-﻿# New Project
-
-# Please Work — Личная база знаний (PKM) на Flask
+ # zametNote — Личная база знаний и заметки на Flask
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
 ![Flask](https://img.shields.io/badge/Flask-3.0%2B-lightgrey)
 ![SQLite](https://img.shields.io/badge/SQLite-3-green)
-![License](https://img.shields.io/badge/License-MIT-yellow)
 
-Простое, лёгкое и полностью локальное веб-приложение для ведения личных заметок и организации знаний.  
+Простое, полностью локальное веб-приложение для ведения заметок и организации личных знаний.  
+Никаких облаков, никаких подписок — всё хранится в одном файле SQLite у тебя на компьютере.
 
-## Функционал 
+## Особенности (на декабрь 2025)
 
-- Регистрация / вход / выход  
+- Регистрация / логин / логаут (пароли надёжно хэшируются через bcrypt)  
 - Создание, редактирование и удаление заметок  
-- Прикрепление тегов к заметкам  
-- Просмотр всех своих заметок в одной таблице  
-- Полная привязка заметок к пользователю  
+- Поддержка тегов для каждой заметки  
+- Удобный просмотр всех своих заметок в одной таблице  
+- Полная приватность — заметки привязаны к аккаунту
 - Минималистичный и чистый интерфейс  
-- Работает оффлайн после первого запуска  
+- Работает полностью оффлайн после запуска  
 
 ## Технологии
 
-- Backend:**Flask**
-- База данных: **SQLite** 
-- Хэширование паролей:**bcrypt**
-- Фронтенд: HTML + немного CSS (всё в `/templates` и `/static`)
+- **Backend**: Flask (Python)  
+- **База данных**: SQLite (`pkm_database.db`)  
+- **Безопасность**: bcrypt  
+- **Фронтенд**: HTML + CSS (шаблоны в `/templates`, стили в `/static`)
 
-
-## Структура
+## Быстрый старт
 
 ```bash
+# 1. Клонируем проект
+git clone https://github.com/karplyukksenia/zametNote.git
+cd zametNote
 
-please-work/
-├── main.py              # точка входа
-├── pkm_database.db      # создаётся автоматически
-├── templates/           # HTML-шаблоны
-│   ├── index.html
-│   ├── login.html
-│   ├── register.html
-│   ├── all_notes.html
-│   └── ...
-├── static/              # CSS
-└── requirements.txt     
-```
+# 2. Создаём и активируем виртуальное окружение (рекомендуется)
+python -m venv venv
+source venv/bin/activate        # Linux / macOS
+# venv\Scripts\activate         # Windows
+
+# 3. Устанавливаем зависимости
+pip install -r requirements.txt
+# Если requirements.txt нет:
+# pip install flask flask-bcrypt
+
+# 4. Запускаем
+python main.py
+
 
 
