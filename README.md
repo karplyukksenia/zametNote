@@ -43,6 +43,10 @@ pip install -r requirements.txt
 
 # 4. Запускаем
 python main.py
+```
 
+## Веб-версия
+
+Доступна веб-версия приложения: https://zametnote.onrender.com/
 
 
